@@ -14,7 +14,7 @@
             justify-content: center; align-items: center; z-index: 2000; padding: 20px;
         }
         
-        .enter-btn { background: #f1c40f; color: #1a2a6c; border: none; padding: 18px 45px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-top: 20px; }
+        .enter-btn { background: #f1c40f; color: #1a2a6c; border: none; padding: 18px 45px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer; margin-top: 20px; }
         .view-btn { background: #ffffff; color: #1a2a6c; border: none; padding: 12px 30px; font-size: 1rem; font-weight: bold; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 20px; }
 
         .header { background: white; padding: 15px; border-radius: 0 0 15px 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; position: sticky; top: 0; z-index: 1000; }
@@ -25,9 +25,12 @@
         .off-campus { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .waiting { background: #fff3cd; color: #856404; }
         
-        /* Search Bar Styling */
+        /* SEARCH BAR STYLING */
         .search-container { padding: 0 15px 15px 15px; }
-        #studentSearch { width: 100%; max-width: 500px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; outline: none; }
+        #studentSearch { 
+            width: 100%; max-width: 500px; padding: 12px; border-radius: 8px; 
+            border: 2px solid #1a2a6c; font-size: 1rem; outline: none;
+        }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 15px; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; border: 1px solid #eee; }
@@ -56,13 +59,30 @@
         <h2 style="font-size: 1.1rem; color:#1a2a6c;">Smt. M. M. Shah College of Education</h2>
         <div id="locationStatus" class="waiting">🔄 Verifying Location...</div>
     </div>
+    
     <div class="search-container">
-        <input type="text" id="studentSearch" placeholder="Search your name or number..." onkeyup="filterStudents()">
+        <input type="text" id="studentSearch" placeholder="🔍 Search Roll No or Name..." onkeyup="filterStudents()">
     </div>
+
     <div id="attendanceGrid" class="grid"></div>
 </div>
 
 <script>
+    /* ==========================================
+    TIME CONVERSION CHEAT SHEET:
+    15 mins = .25  |  30 mins = .50  |  45 mins = .75
+    ------------------------------------------
+    8:00 AM  = 8.0     |  12:30 PM = 12.5
+    9:30 AM  = 9.5     |  2:30 PM  = 14.5
+    11:15 AM = 11.25   |  5:00 PM  = 17.0
+    ========================================== */
+
+    const SATURDAY_START = 8.0;   
+    const SATURDAY_END   = 19.5;   
+    const WEEKDAY_START  = 11.25; 
+    const WEEKDAY_END    = 12.5;  
+    const CLOSE_ON_SUNDAY = true;
+
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4qjqBG_KP90STQIMmJiOkZnfyt_XZRPqou4b94Bt91wTygeAw8X5ich5cDlomUMDV/exec";
     const COLLEGE_LAT = 22.720343216762977; 
     const COLLEGE_LON = 71.65218912589522;
@@ -73,20 +93,15 @@
     const todayKey = "mmsce_lock_" + new Date().toLocaleDateString();
     const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
     let canMark = false;
-
     const quotes = ["Education is the most powerful weapon which you can use to change the world.", "શિક્ષણ એ જીવનની તૈયારી નથી; શિક્ષણ એ પતે જ જીવન છે.", "शिक्षा सबसे शक्तिशाली हथियार है जिससे आप दुनिया बदल सकते हैं।", "Learning is a treasure that will follow its owner everywhere.", "ज्ञान ही शक्ति है।"];
 
     function isTimeValid() {
         const now = new Date();
-        const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const day = now.getDay(); 
         const currentTime = now.getHours() + now.getMinutes() / 60;
-
-        if (day === 0) return false; // Sunday Closed
-        if (day === 6) { // Saturday 8:00 - 9:30
-            return currentTime >= 8.0 && currentTime <= 9.5;
-        }
-        // Monday-Friday 11:15 - 12:30
-        return currentTime >= 11.25 && currentTime <= 12.5;
+        if (day === 0 && CLOSE_ON_SUNDAY) return false; 
+        if (day === 6) return currentTime >= SATURDAY_START && currentTime <= SATURDAY_END;
+        return currentTime >= WEEKDAY_START && currentTime <= WEEKDAY_END;
     }
 
     window.onload = function() {
@@ -163,6 +178,7 @@
         });
     }
 
+    /* SEARCH FILTER LOGIC */
     function filterStudents() {
         const input = document.getElementById('studentSearch').value.toUpperCase();
         const cards = document.getElementsByClassName('card');
@@ -176,20 +192,14 @@
         if (!canMark) return alert("GPS Error: You must be on campus.");
         btn.innerText = "⌛..."; 
         btn.disabled = true;
-
         let success = false;
         for (let i = 0; i < 3; i++) {
             try {
-                await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    body: JSON.stringify({ name: name, status: 'P' }) 
-                });
+                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ name: name, status: 'P' }) });
                 success = true;
                 break; 
             } catch (err) { console.log("Retry " + (i+1)); }
         }
-
         if (success) {
             localStorage.setItem(todayKey, "locked");
             chime.play();
