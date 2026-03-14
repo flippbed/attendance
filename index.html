@@ -25,6 +25,10 @@
         .off-campus { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .waiting { background: #fff3cd; color: #856404; }
         
+        /* Search Bar Styling */
+        .search-container { padding: 0 15px 15px 15px; }
+        #studentSearch { width: 100%; max-width: 500px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; outline: none; }
+
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 15px; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; border: 1px solid #eee; }
         .name-text { flex-grow: 1; text-align: left; font-weight: bold; font-size: 0.95rem; color: #2c3e50; }
@@ -52,15 +56,17 @@
         <h2 style="font-size: 1.1rem; color:#1a2a6c;">Smt. M. M. Shah College of Education</h2>
         <div id="locationStatus" class="waiting">🔄 Verifying Location...</div>
     </div>
+    <div class="search-container">
+        <input type="text" id="studentSearch" placeholder="Search your name or number..." onkeyup="filterStudents()">
+    </div>
     <div id="attendanceGrid" class="grid"></div>
 </div>
 
 <script>
-    // 1. UPDATE YOUR WEB APP URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4qjqBG_KP90STQIMmJiOkZnfyt_XZRPqou4b94Bt91wTygeAw8X5ich5cDlomUMDV/exec";
     const COLLEGE_LAT = 22.720343216762977; 
     const COLLEGE_LON = 71.65218912589522;
-    const MAX_DISTANCE = 0.35; // 350 meters
+    const MAX_DISTANCE = 0.35; 
 
     const students = ["1 BAMBHANIYA VARUN", "2 BARAIYA RAMDEV", "3 BAVLIYA JAYDEEPBHAI", "4 BHADANIYA RITAXI", "5 BHUVA YAISHA", "6 CHATUR SNEHA", "7 CHAUHAN KRISHNA", "8 CHAUHAN SMITKUMAR", "9 CHAVDA YASH", "10 DALOLIYA SHILPABEN", "11 DAXINI HETVI", "12 Dumadiya Sanjay", "13 GADHVI HINAL", "15 Gami Rahul", "16 GOSAI POOJA", "17 JAMBUKIYA ASMITABEN", "18 Janadiya Dhiraj", "19 KHAKHI MITALBEN", "20 LIMBADIYA KOMALBEN", "21 MAHERIYA VARSHABEN", "22 MAHERIYA YOGESHKUMAR", "23 MAKWANA DOLLY", "24 MALAKIYA SWITYBEN", "25 MANANI ALKABEN", "26 MANSURI ARMAN", "27 Mehta Vishvaben", "28 MITHAPARA VANRAJBHAI", "29 MORI MANSHI", "30 NAKIYA GEETABEN", "31 NAKIYA NIKITABEN", "32 NAKIYA SIDDHIBEN", "33 PALANI JAHANVIBEN", "34 Parmar Aman", "35 PARMAR ARTI", "36 PARMAR RESHMA", "37 RANA MADHAVSINH", "38 RATHOD KISMATBEN", "39 RATHOD NARENDRABHAI", "40 JADAV PRIYABEN", "41 Rojasara Kinjal", "42 SARVAIYA JAYESH", "43 SATANI AASHISHKUMAR", "44 SOLANKI HITIXA", "45 SOLANKI JAYSHRIBEN", "46 SOLANKI VAIBHAV", "47 Sumra Farhin", "48 THIM ZEEYA", "49 CHAUHAN TEJASHREEBEN", "50 TRIVEDI NISHTHA", "51 VAGHELA DEVANSHIBA", "52 Vakhariya Dhara", "53 ZALA KOMALBA"];
 
@@ -68,12 +74,19 @@
     const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
     let canMark = false;
 
-    const quotes = ["Education is the most powerful weapon which you can use to change the world.", "શિક્ષણ એ જીવનની તૈયારી નથી; શિક્ષણ એ પતે જ જીવન છે.", "शिक्षा सबसे शक्तिशाली हथियार है जिससे आप दुनिया बदल सकते हैं।", "ज्ञान ही शक्ति है।"];
+    const quotes = ["Education is the most powerful weapon which you can use to change the world.", "શિક્ષણ એ જીવનની તૈયારી નથી; શિક્ષણ એ પતે જ જીવન છે.", "शिक्षा सबसे शक्तिशाली हथियार है जिससे आप दुनिया बदल सकते हैं।", "Learning is a treasure that will follow its owner everywhere.", "ज्ञान ही शक्ति है।"];
 
     function isTimeValid() {
         const now = new Date();
+        const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
         const currentTime = now.getHours() + now.getMinutes() / 60;
-        return currentTime >= 11.25 && currentTime <= 19.0; 
+
+        if (day === 0) return false; // Sunday Closed
+        if (day === 6) { // Saturday 8:00 - 9:30
+            return currentTime >= 8.0 && currentTime <= 9.5;
+        }
+        // Monday-Friday 11:15 - 12:30
+        return currentTime >= 11.25 && currentTime <= 12.5;
     }
 
     window.onload = function() {
@@ -84,7 +97,7 @@
         }
         if (!isTimeValid()) {
             document.getElementById('mainEnterBtn').style.display = 'none';
-            document.getElementById('timeWarning').innerText = "Portal Closed.";
+            document.getElementById('timeWarning').innerText = "Portal Closed (Check Schedule).";
         }
     };
 
@@ -150,14 +163,22 @@
         });
     }
 
+    function filterStudents() {
+        const input = document.getElementById('studentSearch').value.toUpperCase();
+        const cards = document.getElementsByClassName('card');
+        for (let i = 0; i < cards.length; i++) {
+            const name = cards[i].innerText.toUpperCase();
+            cards[i].style.display = name.indexOf(input) > -1 ? "flex" : "none";
+        }
+    }
+
     async function mark(name, btn) {
         if (!canMark) return alert("GPS Error: You must be on campus.");
-        
         btn.innerText = "⌛..."; 
         btn.disabled = true;
 
         let success = false;
-        for (let i = 0; i < 3; i++) { // Retry 3 times
+        for (let i = 0; i < 3; i++) {
             try {
                 await fetch(SCRIPT_URL, { 
                     method: 'POST', 
@@ -166,9 +187,7 @@
                 });
                 success = true;
                 break; 
-            } catch (err) {
-                console.log("Retry " + (i+1));
-            }
+            } catch (err) { console.log("Retry " + (i+1)); }
         }
 
         if (success) {
@@ -177,7 +196,7 @@
             displayQuote();
             showSuccess();
         } else {
-            alert("Connection Failed. Check your data and try again.");
+            alert("Connection Failed. Try again.");
             btn.innerText = "P";
             btn.disabled = false;
         }
